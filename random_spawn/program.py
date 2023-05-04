@@ -96,12 +96,12 @@ class Agent:
         """
         match self._color:
             case PlayerColor.RED:
-                if self.board._history != None:
+                if self.board.turn_count > 1:
                     return self.possible_actions()
                 return SpawnAction(HexPos(3, 3))
             case PlayerColor.BLUE:
                 # This is going to be invalid... BLUE never spawned!
-                if self.board._history != None:
+                if self.board.turn_count > 1:
                     return self.possible_actions()
                 return SpawnAction(HexPos(3, 4))
                 return SpreadAction(HexPos(3, 3), HexDir.Up)

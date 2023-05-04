@@ -22,7 +22,7 @@ class Node:
 
     def is_terminal(self):
         # gameover includes draw
-        return self.board.game_over()
+        return self.board.game_over
     # selection to find best UCB child
     def selection(self):
         C =1
@@ -30,7 +30,7 @@ class Node:
         best_child = None
         for child in self.children:
             # UCB
-            score = child.wins / child.visits + C * math.sqrt(* math.log(self.visits) / child.visits)
+            score = child.wins / child.visits + C * math.sqrt(math.log(self.visits) / child.visits)
             # iteratively find best child
             if score > best_score:
                 best_score = score
@@ -49,25 +49,18 @@ class Node:
     
     # playout
     def playout(self, board):
-        sim_board = copy.deepcopy(board)
-        next_move = possible_actions(board)
-        sim_board.apply_action(next_move)
+    
 
-        # opponent applies move
-        sim_board._turn_color = "b"
-        next_move = possible_actions(sim_board)
-        sim_board.apply_action(next_move)
+        # play (take turns between us n opponent)
+        next_move = possible_actions(board)
+        board.apply_action(next_move)
 
         # check if finished
-        if not self.is_terminal():
-            self.playout(sim_board)
+        if not board.game_over:
+            self.playout(board)
 
         # if simulation has reached end state
-        result = 0
-        if sim_board.winner_color == Agent._color:
-            result = 1
-        else: result = 0
-        return result
+        return board.winner_color
     
     # backpropagation
     def backpropagate(self, result):
@@ -79,7 +72,7 @@ class Node:
 # returns copy of board with action applied 
 def next_board_nonmut(board, action):
     next_board = copy.deepcopy(board)
-    next_board = next_board.apply_action(action)
+    next_board.apply_action(action)
     return next_board
 
 # (populate full board allowed for spawn)
@@ -100,9 +93,9 @@ def possible_actions(board):
     for pos, state in b_dict.items():
         # check off already occupied positions 
         del spawn_dict[pos]
-        # if ur piece, can spread
-        if state.player == board._turn_color:
-            # print(state.player)
+        # if ur piece, (state.player is color of piece) can spread
+        if state.player == board.turn_color:
+
             # print(self._color)
             spread_dict.append(pos)
     
@@ -115,26 +108,34 @@ def possible_actions(board):
             # print(i)
             # print("-------------")
             action_list.append(SpreadAction(i, dir))
-
     return random.choice(action_list)
 
 class Agent:
     def monte_carlo_tree_search(initial_state, max_iterations=1000):
-        root =  Node(initial_state)
-        for _ in range(max_iterations):
+        root =  Node(initial_state.board)
+        # print(initial_state.board.render())
+        
+        for x in range(max_iterations):
             current_node = root
             while not current_node.is_terminal() and current_node.children:
-                current_node = current_node.select_best_child()
+                current_node = current_node.selection()
             if not current_node.is_terminal():
-                current_node.expand()
-                if current_node.children:
-                    current_node = random.choice(current_node.children)
-            result = current_node.playout()
+                current_node = current_node.expansion()
+                # print(current_node.board.render())
+                # if current_node.children:
+                #     print("expansion worked")
+                #     current_node = random.choice(current_node.children)
+            simboard= copy.deepcopy(current_node.board)
+            color = current_node.playout(simboard)
+            result =0
+            if color == initial_state._color:
+                result =1
+            else: result =0
             current_node.backpropagate(result)
 
         # choose child most simulated as next move as most confident
         best_child = max(root.children, key=lambda x: x.visits)
-        return best_child.state.action
+        return best_child.action
 
     def __init__(self, color: PlayerColor, **referee: dict):
         """
@@ -154,13 +155,14 @@ class Agent:
         """
         match self._color:
             case PlayerColor.RED:
-                if self.board._history != None:
-                    return possible_actions(self.board)
+                if self.board.turn_count > 1:
+                    # print(self.board.render())
+                    return self.monte_carlo_tree_search(50)
                 return SpawnAction(HexPos(3, 3))
             case PlayerColor.BLUE:
                 # This is going to be invalid... BLUE never spawned!
-                if self.board._history != None:
-                    return possible_actions(self.board)
+                if self.board.turn_count > 1:
+                    return self.monte_carlo_tree_search(50)
                 return SpawnAction(HexPos(3, 4))
                 return SpreadAction(HexPos(3, 3), HexDir.Up)
 
