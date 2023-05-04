@@ -21,6 +21,39 @@ def fill_full_dict():
                 board_dict[HexPos(i, j)] = None
         return board_dict
 
+def calc_heuristics(player: PlayerColor, board: Board, action: Action):
+    temp_board = copy.deepcopy(board)
+    temp_board.apply_action(action)
+    self_k = self_n = oppo_k = oppo_n = 0
+    for pos, state in temp_board._state.items():
+        if state.player == player:
+            self_n += 1
+            self_k += state.power
+        else:
+            oppo_n += 1
+            oppo_k += state.power
+    temp_board.undo_action()
+    return (oppo_k ** oppo_n) / (self_k ** self_n)
+
+def possible_actions(player_colour: PlayerColor, board: Board):
+    b_dict = board._state
+    spawn_dict = fill_full_dict()
+    spread_dict = []
+    action_list = []
+    colour = player_colour
+    for pos, state in b_dict.items():
+        del spawn_dict[pos]
+        if state.player == colour:
+            spread_dict.append(pos)
+    
+    for i in spread_dict:
+        for dir in HexDir:
+            action_list.append(SpreadAction(i, dir))
+    
+    for i in spawn_dict.keys():
+        action_list.append(SpawnAction(i))
+
+    return action_list
 
 class Agent:
 
@@ -41,53 +74,12 @@ class Agent:
     #     num_lines = len(oppo)
     #     return num_lines
     
-    def calc_heuristics(self, action: Action):
-        temp_board = copy.deepcopy(self.board)
-        temp_board.apply_action(action)
-        self_k = self_n = oppo_k = oppo_n = 0
-        for pos, state in temp_board._state.items():
-            if state.player == self._color:
-                self_n += 1
-                self_k += state.power
-            else:
-                oppo_n += 1
-                oppo_k += state.power
-        temp_board.undo_action()
-        return (oppo_k ** oppo_n) / (self_k ** self_n)
-                    
-
-    def possible_actions(self):
-        b_dict = self.board._state
-        spawn_dict = fill_full_dict()
-        spread_dict = []
-        action_list = []
-        for pos, state in b_dict.items():
-            del spawn_dict[pos]
-            if state.player == self._color:
-                # print(state.player)
-                # print(self._color)
-                spread_dict.append(pos)
-        
-        for i in spread_dict:
-            for dir in HexDir:
-                # print(i)
-                # print("-------------")
-                # print(self.calc_heuristics(SpreadAction(i, dir)))
-                action_list.append(SpreadAction(i, dir))
-        
-        for i in spawn_dict.keys():
-            # print("-------------")
-            # print(self.calc_heuristics(SpawnAction(i)))
-            action_list.append(SpawnAction(i))
-
-        return action_list
-    
     def greedy_select(self):
         h = sys.maxsize
-        action_list = self.possible_actions()
+        action_list = possible_actions(self._color, self.board)
         final_action = action_list[0]
         for action in action_list:
-            curr_h = self.calc_heuristics(action)
+            curr_h = calc_heuristics(self._color, self.board, action)
             if curr_h < h:
                 h = curr_h
                 final_action = action
