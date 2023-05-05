@@ -161,7 +161,7 @@ def fill_tree(root: Node, layer):
 def next_step_select(board: Board):
     root = Node(board, None)
     fill_tree(root, 0)
-    print('FINISHED TREE')
+    # print('FINISHED TREE')
     minimax(root, 0, -1, sys.maxsize, False)
     return root.chosen_action
 
