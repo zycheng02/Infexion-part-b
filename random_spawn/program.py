@@ -103,7 +103,7 @@ class Agent:
                 # This is going to be invalid... BLUE never spawned!
                 if self.board.turn_count > 1:
                     return self.possible_actions()
-                return SpawnAction(HexPos(3, 4))
+                return SpawnAction(HexPos(3, 5))
                 return SpreadAction(HexPos(3, 3), HexDir.Up)
 
     def turn(self, color: PlayerColor, action: Action, **referee: dict):

@@ -39,10 +39,25 @@ class Node:
         
     # expansion
     def expansion(self):
-        random_action = possible_actions(self.board)
+
         #choose random action and create child node for action
-        next_board = next_board_nonmut(self.board, random_action)
-        child_node = Node(next_board, random_action, self)
+        action_list = possible_actions(self.board)
+        board = self.board
+        next_move = None
+        for action in action_list:
+            board.apply_action(action) 
+            if board.game_over:
+                next_move = action
+                board.undo_action()
+                break
+            board.undo_action()
+            
+
+        if next_move == None:
+            next_move = random.choice(action_list)
+        # print(next_move)
+        next_board = next_board_nonmut(self.board, next_move)
+        child_node = Node(next_board, next_move, self)
         self.children.append(child_node)
 
         return child_node
@@ -52,16 +67,20 @@ class Node:
     
 
         # play (take turns between us n opponent)
-        next_move = possible_actions(board)
-        board.apply_action(next_move)
+        action_list = possible_actions(board)
 
         # check if finished
         if not board.game_over:
+            next_move = random.choice(action_list)
+            board.apply_action(next_move)
             self.playout(board)
 
         # if simulation has reached end state
-        return board.winner_color
-    
+        else:
+            # print(board.winner_color)
+
+            return board.winner_color
+
     # backpropagation
     def backpropagate(self, result):
         self.visits += 1
@@ -108,7 +127,7 @@ def possible_actions(board):
             # print(i)
             # print("-------------")
             action_list.append(SpreadAction(i, dir))
-    return random.choice(action_list)
+    return action_list
 
 class Agent:
     def monte_carlo_tree_search(initial_state, max_iterations=1000):
@@ -134,6 +153,7 @@ class Agent:
             current_node.backpropagate(result)
 
         # choose child most simulated as next move as most confident
+        [print(x.action) for x in root.children]
         best_child = max(root.children, key=lambda x: x.visits)
         return best_child.action
 
@@ -157,7 +177,7 @@ class Agent:
             case PlayerColor.RED:
                 if self.board.turn_count > 1:
                     # print(self.board.render())
-                    return self.monte_carlo_tree_search(50)
+                    return self.monte_carlo_tree_search(30)
                 return SpawnAction(HexPos(3, 3))
             case PlayerColor.BLUE:
                 # This is going to be invalid... BLUE never spawned!
