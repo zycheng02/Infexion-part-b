@@ -4,13 +4,42 @@
 from referee.game import \
     PlayerColor, Action, SpawnAction, SpreadAction, HexPos, HexDir, Board
 import copy, sys, random
-import math;
+import math, heapq;
 
 # This is the entry point for your game playing agent. Currently the agent
 # simply spawns a token at the centre of the board if playing as RED, and
 # spreads a token at the centre of the board if playing as BLUE. This is
 # intended to serve as an example of how to use the referee API -- obviously
 # this is not a valid strategy for actually playing the game!
+class PriorityQueue:
+    def __init__(self):
+        self._heap = []
+        self._index = 0
+
+    def push(self, item, priority):
+        heapq.heappush(self._heap, (-priority, self._index, item))
+        self._index += 1
+    def pop(self):
+        item = heapq.heappop(self._heap)[-1]
+        return item
+
+def calc_heuristics(player: PlayerColor, board: Board):
+    temp_board = copy.deepcopy(board)
+    self_k = self_n = oppo_k = oppo_n = 0
+    for pos, state in temp_board._state.items():
+        if state.player == player:
+            self_n += 1
+            self_k += state.power
+        else:
+            oppo_n += 1
+            oppo_k += state.power
+    # if oppo_n == 0:
+    #     return 0
+    # if self_n == 0:
+    #     return sys.maxsize
+    
+    return (oppo_k ** oppo_n) / (self_k ** self_n)
+
 class Node:
     def __init__(self, board, action=None, parent=None):
         self.board = board
@@ -25,7 +54,7 @@ class Node:
         return self.board.game_over
     # selection to find best UCB child
     def selection(self):
-        C =1
+        C =1.4
         best_score = -math.inf
         best_child = None
         for child in self.children:
@@ -42,25 +71,37 @@ class Node:
 
         #choose random action and create child node for action
         action_list = possible_actions(self.board)
+        action_h_list = PriorityQueue()
         board = self.board
         next_move = None
+
         for action in action_list:
             board.apply_action(action) 
+            # can maybe remove game winner checker below? if heuristic responds to win as it should
             if board.game_over:
-                next_move = action
+                action_h_list.push(action, calc_heuristics(board.turn_color, board))
                 board.undo_action()
                 break
+            else: 
+                action_h_list.push(action, calc_heuristics(board.turn_color, board))
             board.undo_action()
             
-
+        top_child = None
         if next_move == None:
-            next_move = random.choice(action_list)
-        # print(next_move)
-        next_board = next_board_nonmut(self.board, next_move)
-        child_node = Node(next_board, next_move, self)
-        self.children.append(child_node)
-
-        return child_node
+            # expand for x no of nodes 
+            for _ in range(3):
+                next_move = action_h_list.pop()
+                next_board = next_board_nonmut(self.board, next_move)
+                child_node = Node(next_board, next_move, self)
+                child_node.visits = 1
+                child_node.wins = 0.2
+                self.children.append(child_node)
+                if _ == 0:
+                    print(next_board.render())
+                    print("uhhh")
+                    top_child = child_node
+        # only returns best move as choice of playout
+        return top_child
     
     # playout
     def playout(self, board):
@@ -68,17 +109,23 @@ class Node:
 
         # play (take turns between us n opponent)
         action_list = possible_actions(board)
-
+        action_h_list = PriorityQueue()
+        next_move = None
+        for action in action_list:
+            board.apply_action(action) 
+            action_h_list.push(action, calc_heuristics(board.turn_color, board))
+            board.undo_action()
+        
         # check if finished
         if not board.game_over:
-            next_move = random.choice(action_list)
+            next_move = action_h_list.pop()
             board.apply_action(next_move)
+            # print(board.turn_count)
             self.playout(board)
 
         # if simulation has reached end state
         else:
             # print(board.winner_color)
-
             return board.winner_color
 
     # backpropagation
@@ -136,14 +183,17 @@ class Agent:
         
         for x in range(max_iterations):
             current_node = root
+            # select best leaf node according to ucb
             while not current_node.is_terminal() and current_node.children:
                 current_node = current_node.selection()
+            # expand selected node
             if not current_node.is_terminal():
                 current_node = current_node.expansion()
                 # print(current_node.board.render())
                 # if current_node.children:
                 #     print("expansion worked")
                 #     current_node = random.choice(current_node.children)
+            # select new expanded child node to playout
             simboard= copy.deepcopy(current_node.board)
             color = current_node.playout(simboard)
             result =0
@@ -177,7 +227,7 @@ class Agent:
             case PlayerColor.RED:
                 if self.board.turn_count > 1:
                     # print(self.board.render())
-                    return self.monte_carlo_tree_search(30)
+                    return self.monte_carlo_tree_search(200)
                 return SpawnAction(HexPos(3, 3))
             case PlayerColor.BLUE:
                 # This is going to be invalid... BLUE never spawned!
