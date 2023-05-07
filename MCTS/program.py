@@ -33,10 +33,10 @@ def calc_heuristics(player: PlayerColor, board: Board):
         else:
             oppo_n += 1
             oppo_k += state.power
-    # if oppo_n == 0:
-    #     return 0
-    # if self_n == 0:
-    #     return sys.maxsize
+    if oppo_n == 0:
+        return 0
+    if self_n == 0:
+        return sys.maxsize
     
     return (oppo_k ** oppo_n) / (self_k ** self_n)
 
@@ -64,11 +64,12 @@ class Node:
             if score > best_score:
                 best_score = score
                 best_child = child
+            
         return best_child
         
     # expansion
     def expansion(self):
-
+        
         #choose random action and create child node for action
         action_list = possible_actions(self.board)
         action_h_list = PriorityQueue()
@@ -87,58 +88,72 @@ class Node:
             board.undo_action()
             
         top_child = None
-        if next_move == None:
+        
             # expand for x no of nodes 
-            for _ in range(3):
-                next_move = action_h_list.pop()
-                next_board = next_board_nonmut(self.board, next_move)
-                child_node = Node(next_board, next_move, self)
-                child_node.visits = 1
-                child_node.wins = 0.2
-                self.children.append(child_node)
-                if _ == 0:
-                    print(next_board.render())
-                    print("uhhh")
-                    top_child = child_node
+        for _ in range(3):
+            next_move = action_h_list.pop()
+            next_board = next_board_nonmut(self.board, next_move)
+            
+            child_node = Node(next_board, next_move, self)
+            child_node.visits = 1
+            child_node.wins = 0.2
+            self.children.append(child_node)
+            # print(board.render())
+            if _ == 0:
+                top_child = child_node
         # only returns best move as choice of playout
         return top_child
     
     # playout
-    def playout(self, board):
+    def playout(self, board, depth):
     
-
         # play (take turns between us n opponent)
         action_list = possible_actions(board)
         action_h_list = PriorityQueue()
         next_move = None
+        # issue w this, when other side, 
         for action in action_list:
+            print(board.turn_color)
             board.apply_action(action) 
+            print(board.turn_color)
             action_h_list.push(action, calc_heuristics(board.turn_color, board))
             board.undo_action()
         
         # check if finished
-        if not board.game_over:
+        if depth <4:
+            print(board.turn_color)
+            depth += 1
             next_move = action_h_list.pop()
             board.apply_action(next_move)
             # print(board.turn_count)
-            self.playout(board)
+            print(self.playout(board, depth) )
+            return self.playout(board, depth) 
+            
+        elif depth == 4:
 
+            h = calc_heuristics(board.turn_color, board)
+            # print(board.turn_color,h)
+            return h 
         # if simulation has reached end state
         else:
             # print(board.winner_color)
             return board.winner_color
 
     # backpropagation
-    def backpropagate(self, result):
+    def backpropagate(self, result, playercolor):
         self.visits += 1
-        self.wins += result
+        # our player node
+        if self.board.turn_color == playercolor:
+            self.wins += result
+            
         if self.parent:
-            self.parent.backpropagate(result)
+            self.parent.backpropagate(result, playercolor)
 
 # returns copy of board with action applied 
 def next_board_nonmut(board, action):
     next_board = copy.deepcopy(board)
     next_board.apply_action(action)
+    # print(board.render())
     return next_board
 
 # (populate full board allowed for spawn)
@@ -195,12 +210,14 @@ class Agent:
                 #     current_node = random.choice(current_node.children)
             # select new expanded child node to playout
             simboard= copy.deepcopy(current_node.board)
-            color = current_node.playout(simboard)
-            result =0
-            if color == initial_state._color:
-                result =1
-            else: result =0
-            current_node.backpropagate(result)
+            result = current_node.playout(simboard, 1)
+            # if cur node is us or opponent
+            print(result)
+            current_node.backpropagate(result, initial_state._color)
+            # result =0
+            # if color == initial_state._color:
+            #     result =1
+            # else: result =0
 
         # choose child most simulated as next move as most confident
         [print(x.action) for x in root.children]
