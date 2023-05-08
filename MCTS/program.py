@@ -39,7 +39,6 @@ def calc_heuristics(player: PlayerColor, board: Board):
         return sys.maxsize
     
     return (oppo_k ** oppo_n) / (self_k ** self_n)
-
 class Node:
     def __init__(self, board, action=None, parent=None):
         self.board = board
@@ -118,8 +117,8 @@ class Node:
             next_board = next_board_nonmut(self.board, next_move)
             
             child_node = Node(next_board, next_move, self)
-            child_node.visits = 1
-            child_node.wins = 0.5
+            child_node.visits = 0
+            child_node.wins = 0
             self.children.append(child_node)
             # print(board.render())
             if _ == 0:
@@ -128,7 +127,7 @@ class Node:
         return top_child
     
     # playout
-    def playout(self, board, depth):
+    def playout(self, board, agentcolor, depth):
         
         # play (take turns between us n opponent)
         action_list = possible_actions(board)
@@ -143,17 +142,26 @@ class Node:
             action_h_list.push(action, calc_heuristics(cur_player, board))
             board.undo_action()
         
+        if depth == 5:
+            oppo_col = None
+            if agentcolor == "RED":
+                oppo_col = "BLUE"
+            else: oppo_col = "RED"
+            if board._color_power(agentcolor) > board._color_power(oppo_col):
+                return agentcolor
+            else:
+                return oppo_col        
         # check if finished
         if not board.game_over:
-            print(board.render())
             # print(board.turn_color)
             depth += 1
             next_move = action_h_list.pop()
             board.apply_action(next_move)
             # print(board.turn_count)
             # print(self.playout(board, depth) )
-            return self.playout(board, depth) 
+            return self.playout(board, agentcolor, depth) 
         # if simulation has reached end state
+
         else:
             # print(board.winner_color)
             return board.winner_color
@@ -193,8 +201,6 @@ def possible_actions(board):
     
     for pos, state in b_dict.items():
         # check off already occupied positions 
-        # print(pos,state)
-        # print(state.player)
         if pos in spawn_dict:
             if state.player != None:
 
@@ -206,11 +212,12 @@ def possible_actions(board):
             spread_dict.append(pos)
         else:
             if board.turn_count < 10:
-                for dir in HexDir:
-                    temp = pos
-                    temp = temp.__add__(dir)
-                    if temp in spawn_dict:
-                        del spawn_dict[temp]
+                if state.player != board.turn_color:
+                    for dir in HexDir:
+                        temp = pos
+                        temp = temp.__add__(dir)
+                        if temp in spawn_dict:
+                            del spawn_dict[temp]
 
     for i in spawn_dict.keys():
         action_list.append(SpawnAction(i))
@@ -242,7 +249,7 @@ class Agent:
                 #     current_node = random.choice(current_node.children)
             # select new expanded child node to playout
             simboard= copy.deepcopy(current_node.board)
-            color = current_node.playout(simboard, 1)
+            color = current_node.playout(simboard, initial_state._color, 1)
             result =0
             if color == initial_state._color:
                 result =1
