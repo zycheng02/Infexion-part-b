@@ -23,7 +23,6 @@ class Node:
     chosen_action: Action = None
     chosen_cost: float = None
 
-# fill a dictionary with all of the possible coordinates in the game 
 def fill_full_dict():
         board_dict = {}
         for i in range(0, 7):
@@ -31,26 +30,21 @@ def fill_full_dict():
                 board_dict[HexPos(i, j)] = None
         return board_dict
 
-# Calculate heuristics based on the ratio between the pieces of the current player and
-# that of the opponents
 def calc_heuristics(player: PlayerColor, board: Board):
     temp_board = copy.deepcopy(board)
-    self_k = self_n = oppo_k = oppo_n = 0
-    for pos, state in temp_board._state.items():
-        if state.player == player:
-            self_n += 1
-            self_k += state.power
-        else:
-            oppo_n += 1
-            oppo_k += state.power
-    if oppo_n == 0:
-        return 0
-    if self_n == 0:
-        return sys.maxsize
+    oppo = [pos for pos in temp_board._state.keys() if temp_board._state[pos].player != player]
+    if len(oppo) == 1:
+        return 1
+    for op in oppo:
+        for dir in HexDir:
+            temp = op
+            for i in range(6):
+                temp = temp.__add__(dir)
+                if temp in oppo:
+                    oppo.remove(temp)
+    num_lines = len(oppo)
+    return num_lines
     
-    return (oppo_k ** oppo_n) / (self_k ** self_n)
-
-# Get all of the possible actions for the given player on the current board
 def possible_actions(player_colour: PlayerColor, board: Board):
     b_dict = board._state
     spawn_dict = fill_full_dict()
@@ -59,10 +53,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
     colour = player_colour
     for pos, state in b_dict.items():
         if pos in spawn_dict:
-            # bug fix, need to check whether position is occupied through player color,
-            # because empty space still has entry in b_dict.items()
-            if state.player != None:
-                del spawn_dict[pos]
+            del spawn_dict[pos]
 
         if state.player == colour:
             spread_dict.append(pos)
@@ -83,19 +74,40 @@ def possible_actions(player_colour: PlayerColor, board: Board):
 
     return action_list
 
-# build the given note with its possible actions
+def ini_spawn(board: Board):
+    action_list = []
+    b_dict = board._state
+    spawn_dict = fill_full_dict()
+    for pos, state in b_dict.items():
+        if pos in spawn_dict:
+            del spawn_dict[pos]
+        for dir in HexDir:
+            temp = pos
+            temp = temp.__add__(dir)
+            if temp in spawn_dict:
+                del spawn_dict[temp]
+
+    for i in spawn_dict.keys():
+        action_list.append(SpawnAction(i))
+
+    return random.choice(action_list)
+
 def build_leaf(root: Node, layer):
     temp_board = copy.deepcopy(root.board)
     curr_player = root.board.turn_color
+    # if layer % 2 != 0:
+    #     if temp_board.turn_color == PlayerColor.RED:
+    #         temp_board.turn_color = PlayerColor.BLUE
+    #         curr_player = PlayerColor.BLUE
+    #     else:
+    #         temp_board.turn_color = PlayerColor.RED
+    #         curr_player = PlayerColor.RED
     action_list = possible_actions(curr_player, temp_board)
     children_list = []
     min_cost = sys.maxsize
-    # create children node for each action
     for action in action_list:
         curr_board = copy.deepcopy(temp_board)
         curr_board.apply_action(action)
-        # if it's the first layer, only add children nodes that has minimum
-        # heuristics to reduce tree size
         if layer == 0:
             h = calc_heuristics(curr_player, curr_board)
             if h > min_cost:
@@ -105,7 +117,6 @@ def build_leaf(root: Node, layer):
         children_list.append(curr_node)
     root.next_steps = children_list
     
-# minimax decision algorithm with alpha-beta pruning
 def minimax(root: Node, depth, alpha, beta, max_round):
     if depth >= TREE_DEPTH:
         root.chosen_cost = calc_heuristics(root.board.turn_color, root.board)
@@ -136,7 +147,6 @@ def minimax(root: Node, depth, alpha, beta, max_round):
         root.chosen_cost = min_cost
         return
 
-# build possible action tree
 def fill_tree(root: Node, layer):
     if layer >= TREE_DEPTH:
         return
@@ -207,6 +217,9 @@ class Agent:
                     return next_step_select(self.board)
                 return SpawnAction(HexPos(3, 3))
             case PlayerColor.BLUE:
+                # This is going to be invalid... BLUE never spawned!
+                # if self.board.turn_count < 10:
+                #     return ini_spawn(self.board)
                 if self.board._history != None:
                     return next_step_select(self.board)
                 return SpawnAction(HexPos(3, 4))
