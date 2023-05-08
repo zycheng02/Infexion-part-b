@@ -50,6 +50,15 @@ def calc_heuristics(player: PlayerColor, board: Board):
     
     return (oppo_k ** oppo_n) / (self_k ** self_n)
 
+def diff(board: Board, player: PlayerColor):
+    self = [pos for pos in board._state.keys() if board._state[pos].player == player]
+    if player == PlayerColor.RED:
+        op_c = PlayerColor.BLUE
+    else:
+        op_c = PlayerColor.RED
+    oppo = [pos for pos in board._state.keys() if board._state[pos].player == op_c]
+    return len(oppo) - len(self)
+
 # Get all of the possible actions for the given player on the current board
 def possible_actions(player_colour: PlayerColor, board: Board):
     b_dict = board._state
@@ -76,11 +85,25 @@ def possible_actions(player_colour: PlayerColor, board: Board):
     
     for i in spread_dict:
         for dir in HexDir:
-            action_list.append(SpreadAction(i, dir))
+            cpy = copy.deepcopy(board)
+            try:
+                cpy.apply_action(SpreadAction(i, dir))
+            except:
+                continue
+            else:
+                action_list.append(SpreadAction(i, dir))
+    
     
     for i in spawn_dict.keys():
-        action_list.append(SpawnAction(i))
+        cpy = copy.deepcopy(board)
+        try:
+            cpy.apply_action(SpawnAction(i))
+        except:
+            continue
+        else:
+            action_list.append(SpawnAction(i))
 
+    # print(action_list)
     return action_list
 
 # build the given note with its possible actions
@@ -115,10 +138,11 @@ def minimax(root: Node, depth, alpha, beta, max_round):
         max_cost = -1
         for child in root.next_steps:
             minimax(child, depth+1, alpha, beta, False)
-            if child.chosen_cost > max_cost:
-                max_cost = child.chosen_cost
-                root.chosen_action = child.action
-            alpha = max(alpha, max_cost)
+            if child.chosen_cost != None:
+                if child.chosen_cost >= max_cost:
+                    max_cost = child.chosen_cost
+                    root.chosen_action = child.action
+                alpha = max(alpha, max_cost)
             if beta <= alpha:
                 break
         root.chosen_cost = max_cost
@@ -127,10 +151,13 @@ def minimax(root: Node, depth, alpha, beta, max_round):
         min_cost = sys.maxsize
         for child in root.next_steps:
             minimax(child, depth+1, alpha, beta, True)
-            if child.chosen_cost < min_cost:
+            if min_cost == sys.maxsize:
                 min_cost = child.chosen_cost
-                root.chosen_action = child.action
-            beta = min(beta, child.chosen_cost)
+            if child.chosen_cost != None:
+                if child.chosen_cost <= min_cost:
+                    min_cost = child.chosen_cost
+                    root.chosen_action = child.action
+                beta = min(beta, child.chosen_cost)
             if beta <= alpha:
                 break
         root.chosen_cost = min_cost
@@ -149,9 +176,11 @@ def fill_tree(root: Node, layer):
 def next_step_select(board: Board):
     root = Node(board, None)
     fill_tree(root, 0)
-    print('FINISHED TREE')
+    # print('FINISHED TREE')
     minimax(root, 0, -1, sys.maxsize, False)
-    return root.chosen_action
+    if root.chosen_action:
+        return root.chosen_action
+    return random.choice(root.next_steps)
 
 def greedy_select(colour: PlayerColor, board: Board):
     h = sys.maxsize
@@ -167,23 +196,6 @@ def greedy_select(colour: PlayerColor, board: Board):
     return final_action
 
 class Agent:
-
-    # def calc_heuristics(self, action: Action):
-    #     temp_board = copy.deepcopy(self.board)
-    #     temp_board.apply_action(action)
-    #     oppo = [pos for pos in temp_board._state.keys() if temp_board._state[pos].player != self._color]
-    #     if len(oppo) == 1:
-    #         return 1
-    #     for op in oppo:
-    #         for dir in HexDir:
-    #             temp = op
-    #             for i in range(6):
-    #                 temp.__add__(dir)
-    #                 if temp in oppo:
-    #                     oppo.remove(temp)
-    #     temp_board.undo_action()
-    #     num_lines = len(oppo)
-    #     return num_lines
 
     def __init__(self, color: PlayerColor, **referee: dict):
         """
