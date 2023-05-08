@@ -55,7 +55,10 @@ def possible_actions(player_colour: PlayerColor, board: Board):
     colour = player_colour
     for pos, state in b_dict.items():
         if pos in spawn_dict:
-            del spawn_dict[pos]
+            # bug fix, need to check whether position is occupied through player color,
+            # because empty space still has entry in b_dict.items()
+            if state.player != None:
+                del spawn_dict[pos]
 
         if state.player == colour:
             spread_dict.append(pos)
