@@ -21,7 +21,7 @@ class Node:
     action: Action
     next_steps: list = None
     chosen_action: Action = None
-    chosen_cost: float = None
+    lowest_heuristic: float = None
 
 # fill a dictionary with all of the possible coordinates in the game 
 def fill_full_dict():
@@ -36,15 +36,20 @@ def fill_full_dict():
 def calc_heuristics(player: PlayerColor, board: Board):
     temp_board = copy.deepcopy(board)
     self_k = self_n = oppo_k = oppo_n = 0
+    # loop through the board to find the total power and number of the pieces
+    # for each player
     for pos, state in temp_board._state.items():
         if state.player == player:
             self_n += 1
             self_k += state.power
         else:
-            oppo_n += 1
-            oppo_k += state.power
+            if state.player != None:
+                oppo_n += 1
+                oppo_k += state.power
+    # win condition, return the lowest heuristics
     if oppo_n == 0:
         return 0
+    # lose condition, return highest possible heuristics
     if self_n == 0:
         return sys.maxsize
     
@@ -66,26 +71,35 @@ def possible_actions(player_colour: PlayerColor, board: Board):
     spread_dict = []
     action_list = []
     colour = player_colour
+    # loop through all of the pieces present on the board
     for pos, state in b_dict.items():
+        # remove the position from spawn dict as the position is already taken
         if pos in spawn_dict:
-            # bug fix, need to check whether position is occupied through player color,
+            # need to check whether position is occupied through player color,
             # because empty space still has entry in b_dict.items()
             if state.player != None:
                 del spawn_dict[pos]
 
+        # add current player's piece to the spread dict
         if state.player == colour:
             spread_dict.append(pos)
         else:
+            # avoid spawning right next to an opponent's piece in the
+            # initial stage of the game
             if board.turn_count < 10:
+                # remove all the coordinates adjacent to the opponent's piece
+                # from the spawn dict
                 for dir in HexDir:
                     temp = pos
                     temp = temp.__add__(dir)
                     if temp in spawn_dict:
                         del spawn_dict[temp]
     
+    # generate all the possible spread actions for all the current player's piece
     for i in spread_dict:
         for dir in HexDir:
             cpy = copy.deepcopy(board)
+            # check if the action is legal
             try:
                 cpy.apply_action(SpreadAction(i, dir))
             except:
@@ -93,9 +107,10 @@ def possible_actions(player_colour: PlayerColor, board: Board):
             else:
                 action_list.append(SpreadAction(i, dir))
     
-    
+    # generate all possible spawn actions
     for i in spawn_dict.keys():
         cpy = copy.deepcopy(board)
+        # check if the action is legal
         try:
             cpy.apply_action(SpawnAction(i))
         except:
@@ -103,7 +118,6 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         else:
             action_list.append(SpawnAction(i))
 
-    # print(action_list)
     return action_list
 
 # build the given note with its possible actions
@@ -130,70 +144,72 @@ def build_leaf(root: Node, layer):
     
 # minimax decision algorithm with alpha-beta pruning
 def minimax(root: Node, depth, alpha, beta, max_round):
+    # bottom layer of the tree
     if depth >= TREE_DEPTH:
-        root.chosen_cost = calc_heuristics(root.board.turn_color, root.board)
+        # calculate the heuristic of current board
+        root.lowest_heuristic = calc_heuristics(root.board.turn_color, root.board)
         return
     
+    # max layer
     if max_round:
         max_cost = -1
         for child in root.next_steps:
+            # select the best heuristic from lower layer
             minimax(child, depth+1, alpha, beta, False)
-            if child.chosen_cost != None:
-                if child.chosen_cost >= max_cost:
-                    max_cost = child.chosen_cost
+            # check if heuristics has been filled
+            if child.lowest_heuristic != None:
+                # update heuristics if the current one is more desirable
+                if child.lowest_heuristic >= max_cost:
+                    max_cost = child.lowest_heuristic
                     root.chosen_action = child.action
                 alpha = max(alpha, max_cost)
+            # stop traversal if the current branch is irrelevant
             if beta <= alpha:
                 break
-        root.chosen_cost = max_cost
+        root.lowest_heuristic = max_cost
         return
+    # min layer
     else:
         min_cost = sys.maxsize
         for child in root.next_steps:
+            # select the best heuristic from lower layer
             minimax(child, depth+1, alpha, beta, True)
             if min_cost == sys.maxsize:
-                min_cost = child.chosen_cost
-            if child.chosen_cost != None:
-                if child.chosen_cost <= min_cost:
-                    min_cost = child.chosen_cost
+                min_cost = child.lowest_heuristic
+            # check if heuristics has been filled
+            if child.lowest_heuristic != None:
+                # update heuristics if the current one is more desirable
+                if child.lowest_heuristic <= min_cost:
+                    min_cost = child.lowest_heuristic
                     root.chosen_action = child.action
-                beta = min(beta, child.chosen_cost)
+                beta = min(beta, child.lowest_heuristic)
+            # stop traversal if the current branch is irrelevant
             if beta <= alpha:
                 break
-        root.chosen_cost = min_cost
+        root.lowest_heuristic = min_cost
         return
 
 # build possible action tree
 def fill_tree(root: Node, layer):
+    # if bottom layer of the tree is reached
     if layer >= TREE_DEPTH:
         return
         
+    # build the current node
     build_leaf(root, layer)
 
+    # build all child nodes
     for child in root.next_steps:
         fill_tree(child, layer+1)
 
+# select next most optimal step
 def next_step_select(board: Board):
     root = Node(board, None)
     fill_tree(root, 0)
-    # print('FINISHED TREE')
     minimax(root, 0, -1, sys.maxsize, False)
     if root.chosen_action:
         return root.chosen_action
     return random.choice(root.next_steps)
-
-def greedy_select(colour: PlayerColor, board: Board):
-    h = sys.maxsize
-    action_list = possible_actions(colour, board)
-    final_action = action_list[0]
-    for action in action_list:
-        temp_board = copy.deepcopy(board)
-        temp_board.apply_action(action)
-        curr_h = calc_heuristics(colour, temp_board)
-        if curr_h < h:
-            h = curr_h
-            final_action = action
-    return final_action
 
 class Agent:
 
@@ -215,21 +231,14 @@ class Agent:
         """
         match self._color:
             case PlayerColor.RED:
-                if self.board._history != None:
-                    return next_step_select(self.board)
-                return SpawnAction(HexPos(3, 3))
+                return next_step_select(self.board)
             case PlayerColor.BLUE:
-                if self.board._history != None:
-                    return next_step_select(self.board)
-                return SpawnAction(HexPos(3, 4))
-                return SpreadAction(HexPos(3, 3), HexDir.Up)
+                return next_step_select(self.board)
 
     def turn(self, color: PlayerColor, action: Action, **referee: dict):
         """
         Update the agent with the last player's action.
         """
-        # if self._color != color:
-        # print(self.board.__getitem__(HexPos(0,0)))
         self.board.apply_action(action)
         match action:
             case SpawnAction(cell):
