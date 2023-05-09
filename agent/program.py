@@ -68,7 +68,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         if pos in spawn_dict:
             # need to check whether position is occupied through player color,
             # because empty space still has entry in b_dict.items()
-            if state.player != None:
+            # if state.player != None:
                 del spawn_dict[pos]
 
         # add current player's piece to the spread dict
