@@ -43,7 +43,6 @@ def calc_heuristics(player: PlayerColor, board: Board):
             self_n += 1
             self_k += state.power
         else:
-            # if state.player != None:
                 oppo_n += 1
                 oppo_k += state.power
     # win condition, return the lowest heuristics
