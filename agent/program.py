@@ -147,13 +147,11 @@ def minimax(root: Node, depth, alpha, beta, max_round):
         for child in root.next_steps:
             # select the best heuristic from lower layer
             minimax(child, depth+1, alpha, beta, False)
-            # check if heuristics has been filled
-            if child.lowest_heuristic != None:
-                # update heuristics if the current one is more desirable
-                if child.lowest_heuristic >= max_cost:
-                    max_cost = child.lowest_heuristic
-                    root.chosen_action = child.action
-                alpha = max(alpha, max_cost)
+            # update heuristics if the current one is more desirable
+            if child.lowest_heuristic >= max_cost:
+                max_cost = child.lowest_heuristic
+                root.chosen_action = child.action
+            alpha = max(alpha, max_cost)
             # stop traversal if the current branch is irrelevant
             if beta <= alpha:
                 break
@@ -167,13 +165,11 @@ def minimax(root: Node, depth, alpha, beta, max_round):
             minimax(child, depth+1, alpha, beta, True)
             if min_cost == sys.maxsize:
                 min_cost = child.lowest_heuristic
-            # check if heuristics has been filled
-            if child.lowest_heuristic != None:
-                # update heuristics if the current one is more desirable
-                if child.lowest_heuristic <= min_cost:
-                    min_cost = child.lowest_heuristic
-                    root.chosen_action = child.action
-                beta = min(beta, child.lowest_heuristic)
+            # update heuristics if the current one is more desirable
+            if child.lowest_heuristic <= min_cost:
+                min_cost = child.lowest_heuristic
+                root.chosen_action = child.action
+            beta = min(beta, child.lowest_heuristic)
             # stop traversal if the current branch is irrelevant
             if beta <= alpha:
                 break
