@@ -77,7 +77,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         else:
             # avoid spawning right next to an opponent's piece in the
             # initial stage of the game
-            # if board.turn_count < 10:
+            if state.player != None:
                 # remove all the coordinates adjacent to the opponent's piece
                 # from the spawn dict
                 for dir in HexDir:
@@ -219,7 +219,6 @@ def ini_spawn(board: Board, player: PlayerColor):
     b_dict = board._state
     spawn_dict = fill_full_dict()
     action_list = []
-    colour = player
     # loop through all of the pieces present on the board
     for pos, state in b_dict.items():
         # remove the position from spawn dict as the position is already taken
