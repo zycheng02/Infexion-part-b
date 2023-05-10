@@ -68,8 +68,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         if pos in spawn_dict:
             # need to check whether position is occupied through player color,
             # because empty space still has entry in b_dict.items()
-            # if state.player != None:
-                del spawn_dict[pos]
+            del spawn_dict[pos]
 
         # add current player's piece to the spread dict
         if state.player == colour:
@@ -77,14 +76,13 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         else:
             # avoid spawning right next to an opponent's piece in the
             # initial stage of the game
-            if state.player != None:
-                # remove all the coordinates adjacent to the opponent's piece
-                # from the spawn dict
-                for dir in HexDir:
-                    temp = pos
-                    temp = temp.__add__(dir)
-                    if temp in spawn_dict:
-                        del spawn_dict[temp]
+            # remove all the coordinates adjacent to the opponent's piece
+            # from the spawn dict
+            for dir in HexDir:
+                temp = pos
+                temp = temp.__add__(dir)
+                if temp in spawn_dict:
+                    del spawn_dict[temp]
     
     # generate all the possible spread actions for all the current player's piece
     for i in spread_dict:
@@ -222,7 +220,7 @@ def ini_spawn(board: Board, player: PlayerColor):
     # loop through all of the pieces present on the board
     for pos, state in b_dict.items():
         # remove the position from spawn dict as the position is already taken
-        if pos in spawn_dict and state.player != None:
+        if pos in spawn_dict:
             del spawn_dict[pos]
         else:
             # avoid spawning right next to an opponent's piece in the
