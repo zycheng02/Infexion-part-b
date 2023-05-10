@@ -67,6 +67,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         if pos in spawn_dict:
             # need to check whether position is occupied through player color,
             # because empty space still has entry in b_dict.items()
+            # if state.player != None:
                 del spawn_dict[pos]
 
         # add current player's piece to the spread dict
@@ -84,27 +85,28 @@ def possible_actions(player_colour: PlayerColor, board: Board):
                     if temp in spawn_dict:
                         del spawn_dict[temp]
     
+    cpy = copy.deepcopy(board)
     # generate all the possible spread actions for all the current player's piece
     for i in spread_dict:
         for dir in HexDir:
-            cpy = copy.deepcopy(board)
             # check if the action is legal
             try:
                 cpy.apply_action(SpreadAction(i, dir))
             except:
                 continue
             else:
+                cpy.undo_action()
                 action_list.append(SpreadAction(i, dir))
     
     # generate all possible spawn actions
     for i in spawn_dict.keys():
-        cpy = copy.deepcopy(board)
         # check if the action is legal
         try:
             cpy.apply_action(SpawnAction(i))
         except:
             continue
         else:
+            cpy = copy.deepcopy(board)
             action_list.append(SpawnAction(i))
 
     return action_list
