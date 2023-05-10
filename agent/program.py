@@ -6,7 +6,7 @@ from referee.game import \
 import copy, sys, random
 from dataclasses import dataclass
 
-TREE_DEPTH = 3
+TREE_DEPTH = 2
 
 
 # This is the entry point for your game playing agent. Currently the agent
