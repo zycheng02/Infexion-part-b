@@ -222,7 +222,7 @@ def ini_spawn(board: Board, player: PlayerColor):
     # loop through all of the pieces present on the board
     for pos, state in b_dict.items():
         # remove the position from spawn dict as the position is already taken
-        if pos in spawn_dict:
+        if pos in spawn_dict and state.player != None:
             del spawn_dict[pos]
         else:
             # avoid spawning right next to an opponent's piece in the
