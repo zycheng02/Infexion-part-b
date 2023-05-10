@@ -76,7 +76,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         else:
             # avoid spawning right next to an opponent's piece in the
             # initial stage of the game
-            if board.turn_count < 10:
+            # if board.turn_count < 10:
                 # remove all the coordinates adjacent to the opponent's piece
                 # from the spawn dict
                 for dir in HexDir:
@@ -114,7 +114,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
 def build_leaf(root: Node, layer):
     temp_board = copy.deepcopy(root.board)
     curr_player = root.board.turn_color
-    if root.board.turn_count < 30:
+    if root.board.turn_count < 20 and layer == 0:
         action_list = ini_spawn(temp_board, curr_player)
     else:
         action_list = possible_actions(curr_player, temp_board)
@@ -232,7 +232,7 @@ def ini_spawn(board: Board, player: PlayerColor):
             for dir in HexDir:
                 temp = pos
                 temp = temp.__add__(dir)
-                if temp in spawn_dict:
+                if temp in spawn_dict and len(spawn_dict):
                     del spawn_dict[temp]
     # generate all possible spawn actions
     for i in spawn_dict.keys():
