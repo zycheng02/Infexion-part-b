@@ -232,7 +232,7 @@ def ini_spawn(board: Board, player: PlayerColor):
             for dir in HexDir:
                 temp = pos
                 temp = temp.__add__(dir)
-                if temp in spawn_dict and len(spawn_dict):
+                if temp in spawn_dict and len(spawn_dict) > 1:
                     del spawn_dict[temp]
     # generate all possible spawn actions
     for i in spawn_dict.keys():
