@@ -43,7 +43,6 @@ def calc_heuristics(player: PlayerColor, board: Board):
             self_n += 1
             self_k += state.power
         else:
-            if state.player != None:
                 oppo_n += 1
                 oppo_k += state.power
     # win condition, return the lowest heuristics
@@ -68,7 +67,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         if pos in spawn_dict:
             # need to check whether position is occupied through player color,
             # because empty space still has entry in b_dict.items()
-            del spawn_dict[pos]
+                del spawn_dict[pos]
 
         # add current player's piece to the spread dict
         if state.player == colour:
@@ -76,13 +75,14 @@ def possible_actions(player_colour: PlayerColor, board: Board):
         else:
             # avoid spawning right next to an opponent's piece in the
             # initial stage of the game
-            # remove all the coordinates adjacent to the opponent's piece
-            # from the spawn dict
-            for dir in HexDir:
-                temp = pos
-                temp = temp.__add__(dir)
-                if temp in spawn_dict:
-                    del spawn_dict[temp]
+            if board.turn_count < 10:
+                # remove all the coordinates adjacent to the opponent's piece
+                # from the spawn dict
+                for dir in HexDir:
+                    temp = pos
+                    temp = temp.__add__(dir)
+                    if temp in spawn_dict:
+                        del spawn_dict[temp]
     
     # generate all the possible spread actions for all the current player's piece
     for i in spread_dict:
@@ -113,10 +113,7 @@ def possible_actions(player_colour: PlayerColor, board: Board):
 def build_leaf(root: Node, layer):
     temp_board = copy.deepcopy(root.board)
     curr_player = root.board.turn_color
-    if root.board.turn_count < 20 and layer == 0:
-        action_list = ini_spawn(temp_board, curr_player)
-    else:
-        action_list = possible_actions(curr_player, temp_board)
+    action_list = possible_actions(curr_player, temp_board)
     children_list = []
     min_cost = sys.maxsize
     # create children node for each action
@@ -148,10 +145,6 @@ def minimax(root: Node, depth, alpha, beta, max_round):
         for child in root.next_steps:
             # select the best heuristic from lower layer
             minimax(child, depth+1, alpha, beta, False)
-            if child.lowest_heuristic == 0:
-                root.chosen_action = child.action
-                root.lowest_heuristic = child.lowest_heuristics
-                return
             # update heuristics if the current one is more desirable
             if child.lowest_heuristic >= max_cost:
                 max_cost = child.lowest_heuristic
@@ -170,10 +163,6 @@ def minimax(root: Node, depth, alpha, beta, max_round):
             minimax(child, depth+1, alpha, beta, True)
             if min_cost == sys.maxsize:
                 min_cost = child.lowest_heuristic
-            if child.lowest_heuristic == 0:
-                root.chosen_action = child.action
-                root.lowest_heuristic = child.lowest_heuristics
-                return
             # update heuristics if the current one is more desirable
             if child.lowest_heuristic <= min_cost:
                 min_cost = child.lowest_heuristic
@@ -197,53 +186,6 @@ def fill_tree(root: Node, layer):
     # build all child nodes
     for child in root.next_steps:
         fill_tree(child, layer+1)
-
-def test_spread(board: Board, player: PlayerColor):
-    b_dict = board._state
-    for pos, state in b_dict.items():
-        if state.player == player:
-            for dir in HexDir:
-                cpy = copy.deepcopy(board)
-                cpy.apply_action(SpreadAction(pos, dir))
-                h = calc_heuristics(player, cpy)
-                if h == 0:
-                    return SpreadAction(pos, dir)
-    return None
-
-def ini_spawn(board: Board, player: PlayerColor):
-    sprd = test_spread(board, player)
-    if sprd:
-        return [sprd]
-    b_dict = board._state
-    spawn_dict = fill_full_dict()
-    action_list = []
-    # loop through all of the pieces present on the board
-    for pos, state in b_dict.items():
-        # remove the position from spawn dict as the position is already taken
-        if pos in spawn_dict:
-            del spawn_dict[pos]
-        else:
-            # avoid spawning right next to an opponent's piece in the
-            # initial stage of the game
-            # remove all the coordinates adjacent to the opponent's piece
-            # from the spawn dict
-            for dir in HexDir:
-                temp = pos
-                temp = temp.__add__(dir)
-                if temp in spawn_dict and len(spawn_dict) > 1:
-                    del spawn_dict[temp]
-    # generate all possible spawn actions
-    for i in spawn_dict.keys():
-        cpy = copy.deepcopy(board)
-        # check if the action is legal
-        try:
-            cpy.apply_action(SpawnAction(i))
-        except:
-            continue
-        else:
-            action_list.append(SpawnAction(i))
-
-    return action_list
 
 # select next most optimal step
 def next_step_select(board: Board):
